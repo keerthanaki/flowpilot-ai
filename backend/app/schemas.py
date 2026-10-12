@@ -13,3 +13,14 @@ class TaskCreate(BaseModel):
 
 class TaskStatusUpdate(BaseModel):
     status: Literal["open", "in_progress", "done"]
+
+
+class ExtractedRequest(BaseModel):
+    """Fields the LLM may extract. Anything not stated in the text must be null."""
+
+    request_type: Optional[Literal["quotation", "other"]] = None
+    customer_name: Optional[str] = None
+    product: Optional[str] = None
+    quantity: Optional[int] = None
+    delivery_date: Optional[str] = None
+    customer_contact: Optional[str] = None

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import supabase
 from app.llm import ask_llm
+from app.extraction import extract_request
 from app.schemas import RequestCreate, TaskCreate, TaskStatusUpdate
 
 app = FastAPI(title="FlowPilot AI")
@@ -118,3 +119,41 @@ def ai_test():
         traceback.print_exc()
         raise HTTPException(status_code=502, detail="LLM call failed")
     return {"reply": reply}
+
+
+
+@app.post("/requests/{request_id}/extract")
+def extract_request_info(request_id: str):
+    try:
+        found = (
+            supabase.table("requests").select("*").eq("id", request_id).execute()
+        )
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not load the request")
+    if not found.data:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    try:
+        extracted, missing = extract_request(found.data[0]["raw_text"])
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail="Extraction failed")
+
+    try:
+        saved = (
+            supabase.table("requests")
+            .update(
+                {
+                    "extracted": extracted.model_dump(),
+                    "missing_fields": missing,
+                    "status": "extracted",
+                }
+            )
+            .eq("id", request_id)
+            .execute()
+        )
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not save the extraction")
+    return saved.data[0]
