@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import supabase
+from app.llm import ask_llm
 from app.schemas import RequestCreate, TaskCreate, TaskStatusUpdate
 
 app = FastAPI(title="FlowPilot AI")
@@ -107,3 +108,13 @@ def update_task_status(task_id: str, payload: TaskStatusUpdate):
     if not result.data:
         raise HTTPException(status_code=404, detail="Task not found")
     return result.data[0]
+
+
+@app.get("/ai/test")
+def ai_test():
+    try:
+        reply = ask_llm("Reply with exactly: FlowPilot AI connection OK")
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail="LLM call failed")
+    return {"reply": reply}
