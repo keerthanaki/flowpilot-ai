@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import ExtractionPanel from "./ExtractionPanel";
 
 const API = "http://localhost:8000";
 
@@ -7,6 +8,8 @@ type RequestItem = {
   raw_text: string;
   status: string;
   created_at: string;
+  extracted: Record<string, string | number | null> | null;
+  missing_fields: string[] | null;
 };
 
 type TaskItem = {
@@ -173,6 +176,12 @@ function App() {
             <small>
               {r.status} · {new Date(r.created_at).toLocaleString()}
             </small>
+            <ExtractionPanel
+              requestId={r.id}
+              extracted={r.extracted}
+              missingFields={r.missing_fields}
+              onDone={loadRequests}
+            />
             <TaskSection requestId={r.id} />
           </li>
         ))}
@@ -182,3 +191,4 @@ function App() {
 }
 
 export default App;
+
