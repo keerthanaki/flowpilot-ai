@@ -1,9 +1,9 @@
-import traceback
+﻿import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import supabase
-from app.schemas import RequestCreate
+from app.schemas import RequestCreate, TaskCreate, TaskStatusUpdate
 
 app = FastAPI(title="FlowPilot AI")
 
@@ -49,3 +49,61 @@ def list_requests():
         raise HTTPException(status_code=500, detail="Could not load requests")
     return result.data
 
+
+@app.post("/requests/{request_id}/tasks", status_code=201)
+def create_task(request_id: str, payload: TaskCreate):
+    try:
+        found = (
+            supabase.table("requests").select("id").eq("id", request_id).execute()
+        )
+        if found.data:
+            result = (
+                supabase.table("tasks")
+                .insert(
+                    {
+                        "request_id": request_id,
+                        "title": payload.title.strip(),
+                        "description": payload.description,
+                    }
+                )
+                .execute()
+            )
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not create the task")
+    if not found.data:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return result.data[0]
+
+
+@app.get("/requests/{request_id}/tasks")
+def list_tasks(request_id: str):
+    try:
+        result = (
+            supabase.table("tasks")
+            .select("*")
+            .eq("request_id", request_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not load tasks")
+    return result.data
+
+
+@app.patch("/tasks/{task_id}")
+def update_task_status(task_id: str, payload: TaskStatusUpdate):
+    try:
+        result = (
+            supabase.table("tasks")
+            .update({"status": payload.status})
+            .eq("id", task_id)
+            .execute()
+        )
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not update the task")
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return result.data[0]
